@@ -1,57 +1,34 @@
-use nettle::{ecdsa, Yarrow};
-use std::fmt;
+use ed25519_dalek::Keypair;
 
-struct Key {
-    public_a: std::boxed::Box<[u8]>,
-    public_b: std::boxed::Box<[u8]>,
-    private: std::boxed::Box<[u8]>,
-    curve: String,
-}
+use ed25519_dalek::PUBLIC_KEY_LENGTH as LEN;
 
-impl fmt::Display for Key {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{{")?;
-        write!(f, "  public: ")?;
-        for &x in self.public_a.iter() {
-            write!(f, "{:x}", x)?;
-        }
-        for &x in self.public_b.iter() {
-            write!(f, "{:x}", x)?;
-        }
-        writeln!(f, "")?;
-        write!(f, "  private: ")?;
-        for &x in self.private.iter() {
-            write!(f, "{:x}", x)?;
-        }
-        writeln!(f, "")?;
-        writeln!(f, "  curve: {}", self.curve)?;
-        writeln!(f, "}}")
-    }
-}
+use rand::prelude::*;
+use sha2::Sha512;
+use base64::encode;
 
 fn main() {
-    let mut rng = Yarrow::default();
+    let mut csprng: ThreadRng = thread_rng();
     let mut iters: u32 = 0;
-    let (public_a, public_b, private) = loop {
+
+    let keypair = loop {
         iters += 1;
-        let (public, private) = ecdsa::generate_keypair::<ecdsa::Secp192r1, Yarrow>(&mut rng).unwrap();
-        let (a, b) = public.as_bytes();
-        let c = private.as_bytes();
-        let index = b.len() - 2;
-        if a[0..=1] == [0xde, 0xad] && b[index] == 0xde && b[index+1] == 0xad {
-            break (a, b, c);
+        let keypair: Keypair = Keypair::generate::<Sha512, _>(&mut csprng);
+
+        let pubkey = encode(&keypair.public.to_bytes());
+
+        let begin = &pubkey[0..4];
+        let _end = &pubkey[LEN-4..LEN];
+
+        // should this be to_base64?
+        if begin.to_lowercase() == "dead" {
+            break keypair
         }
-        if iters % 1_000_000 == 0 {
-            println!("{} million iterations", iters/1_000_000);
+
+        if iters % 1_000 == 0 {
+            println!("{} thousand iterations", iters/1_000);
         }
     };
 
-    let key = Key {
-        public_a: public_a,
-        public_b: public_b,
-        private: private,
-        curve: "p192".into()
-    };
-
-    println!("key: {}", key);
+    println!("keypair: {:?}", keypair);
 }
+

@@ -5,4 +5,7 @@ authors = ["Jonathan Dahan <hi@jonathan.is>"]
 edition = "2018"
 
 [dependencies]
-nettle = "2.1.0"
+ed25519-dalek = { git = "https://github.com/spebern/ed25519-dalek" }
+rand = "0.6.4"
+sha2 = "0.8.0"
+base64 = "0.10.0"
